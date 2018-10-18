@@ -43,39 +43,39 @@ void bf_cmd_destroy(bf_cmd_t *root_cmd)
     }
 }
 
-void bf_stack_init(bf_stack_t *stack)
+void bf_cmd_stack_init(bf_cmd_stack_t *stack)
 {
     stack->last = NULL;
     stack->length = 0;
 }
 
-void bf_stack_destroy(bf_stack_t *stack)
+void bf_cmd_stack_destroy(bf_cmd_stack_t *stack)
 {
-    bf_stack_item_t *current_item = stack->last;
+    bf_cmd_stack_item_t *current_item = stack->last;
     while (current_item != NULL)
     {
-        bf_stack_item_t *previous_item = current_item->previous;
+        bf_cmd_stack_item_t *previous_item = current_item->previous;
         free(current_item);
         current_item = previous_item;
     }
 }
 
-void bf_stack_push(bf_stack_t *stack, bf_cmd_t *cmd)
+void bf_cmd_stack_push(bf_cmd_stack_t *stack, bf_cmd_t *cmd)
 {
-    static const size_t SIZE_OF_STACK_ITEM_TYPE = sizeof(bf_stack_item_t);
+    static const size_t SIZE_OF_CMD_STACK_ITEM_TYPE = sizeof(bf_cmd_stack_item_t);
 
-    bf_stack_item_t *item = malloc(SIZE_OF_STACK_ITEM_TYPE);
+    bf_cmd_stack_item_t *item = malloc(SIZE_OF_CMD_STACK_ITEM_TYPE);
     item->previous = stack->last;
     item->value = cmd;
     stack->last = item;
     ++(stack->length);
 }
 
-bf_cmd_t* bf_stack_pop(bf_stack_t *stack)
+bf_cmd_t* bf_cmd_stack_pop(bf_cmd_stack_t *stack)
 {
     if (stack->length > 0)
     {
-        bf_stack_item_t *item = stack->last;
+        bf_cmd_stack_item_t *item = stack->last;
         stack->last = item->previous;
         --(stack->length);
         bf_cmd_t *cmd = item->value;
@@ -117,8 +117,8 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
     bf_cmd_type_t current_type = BF_CMD_NONE;
     bf_cmd_type_t prev_type = BF_CMD_NONE;
 
-    bf_stack_t jump_stack;
-    bf_stack_init(&jump_stack);
+    bf_cmd_stack_t jump_stack;
+    bf_cmd_stack_init(&jump_stack);
 
     size_t pos = 0;
     size_t line_offset = 0;
@@ -181,19 +181,19 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
                 bf_cmd_init(cmd, current_type, 0);
                 if (current_type == BF_CMD_JUMP_FORWARD)
                 {
-                    bf_stack_push(&jump_stack, cmd);
+                    bf_cmd_stack_push(&jump_stack, cmd);
                 }
                 else if (current_type == BF_CMD_JUMP_BACK)
                 {
                     if (jump_stack.length > 0)
                     {
-                        cmd->jump_cmd_target = bf_stack_pop(&jump_stack);
+                        cmd->jump_cmd_target = bf_cmd_stack_pop(&jump_stack);
                     }
                     else
                     {
                         // Error
                         bf_cmd_destroy(root_cmd);
-                        bf_stack_destroy(&jump_stack);
+                        bf_cmd_stack_destroy(&jump_stack);
                         bf_error(status, BF_STATUS_UNEXPECTED_CLOSING_BRACKET, line, pos - line_offset);
                         return NULL;
                     }
@@ -243,7 +243,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
     {
         // Error
         bf_cmd_destroy(root_cmd);
-        bf_stack_destroy(&jump_stack);
+        bf_cmd_stack_destroy(&jump_stack);
         bf_error(status, BF_STATUS_UNCLOSED_BRACKET, line, pos - line_offset);
         return NULL;
     }

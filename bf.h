@@ -58,27 +58,27 @@ typedef struct bf_cmd {
     struct bf_cmd *jump_cmd_target;      // Only used for the jump commands
 } bf_cmd_t;
 
-typedef struct bf_stack_item {
+typedef struct bf_cmd_stack_item {
     bf_cmd_t *value;
-    struct bf_stack_item *previous;
-} bf_stack_item_t;
+    struct bf_cmd_stack_item *previous;
+} bf_cmd_stack_item_t;
 
 typedef struct {
-    bf_stack_item_t *last;
+    bf_cmd_stack_item_t *last;
     size_t length;
-} bf_stack_t;
+} bf_cmd_stack_t;
 
 // Initializes a Brainfuck command stack
-void bf_stack_init(bf_stack_t *stack);
+void bf_cmd_stack_init(bf_cmd_stack_t *stack);
 
 // Frees and clears all of the items in a Brainfuck command stack
-void bf_stack_destroy(bf_stack_t *stack);
+void bf_cmd_stack_destroy(bf_cmd_stack_t *stack);
 
 // Pushes an item onto the stack
-void bf_stack_push(bf_stack_t *stack, bf_cmd_t *cmd);
+void bf_cmd_stack_push(bf_cmd_stack_t *stack, bf_cmd_t *cmd);
 
 // Pops and returns an item from the stack
-bf_cmd_t* bf_stack_pop(bf_stack_t *stack);
+bf_cmd_t* bf_cmd_stack_pop(bf_cmd_stack_t *stack);
 
 // Initializes a Brainfuck command struct
 void bf_cmd_init(bf_cmd_t *cmd, bf_cmd_type_t type, size_t value);
