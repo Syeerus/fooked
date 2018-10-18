@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "bf.h"
 
@@ -171,7 +172,14 @@ void bf_run(bf_status_t *status, char *source, bf_env_t *env)
                 printf("%c", env->data_cells[env->data_ptr_idx]);
                 break;
             case BF_CMD_INPUT:
-                // TODO
+                if (env->input)
+                {
+                    env->data_cells[env->data_ptr_idx] = env->input[env->input_idx];
+                    if (env->input[env->input_idx] != '\0')
+                    {
+                        ++(env->input_idx);
+                    }
+                }
                 break;
             case BF_CMD_JUMP_FORWARD:
                 if (env->data_cells[env->data_ptr_idx] == 0)
