@@ -37,10 +37,12 @@ void* bf_malloc(size_t size)
     return ptr;
 }
 
-void bf_cmd_init(bf_cmd_t *cmd, bf_cmd_type_t type, size_t value)
+void bf_cmd_init(bf_cmd_t *cmd, bf_cmd_type_t type, size_t value, size_t line, size_t column)
 {
     cmd->type = type;
     cmd->value = value;
+    cmd->line = line;
+    cmd->column = column;
     cmd->next_cmd = NULL;
     cmd->jump_cmd_target = NULL;
 }
@@ -100,6 +102,30 @@ bf_cmd_t* bf_cmd_stack_pop(bf_cmd_stack_t *stack)
     return NULL;
 }
 
+void bf_env_init(bf_env_t *env, size_t num_of_data_cells, char *input)
+{
+    env->data_cells = bf_malloc(sizeof(char) * num_of_data_cells);
+    env->num_of_data_cells = num_of_data_cells;
+    env->data_ptr_idx = 0;
+    env->input = input;
+    env->input_idx = 0;
+
+    size_t i;
+    for (i=0; i<num_of_data_cells; ++i)
+    {
+        env->data_cells[i] = 0;
+    }
+}
+
+void bf_env_destroy(bf_env_t *env)
+{
+    free(env->data_cells);
+    env->data_cells = NULL;
+    env->num_of_data_cells = 0;
+    env->data_ptr_idx = 0;
+    env->input = NULL;
+}
+
 void bf_error(bf_status_t *status, bf_status_type_t type, size_t line, size_t column)
 {
     status->type = type;
@@ -107,7 +133,7 @@ void bf_error(bf_status_t *status, bf_status_type_t type, size_t line, size_t co
     status->column = column;
 }
 
-void bf_run(bf_status_t *status, char *source)
+void bf_run(bf_status_t *status, char *source, bf_env_t *env)
 {
     bf_cmd_t *root_cmd = bf_parse_str(status, source);
     if (status->type == BF_STATUS_OK)
@@ -115,8 +141,57 @@ void bf_run(bf_status_t *status, char *source)
         bf_cmd_t *cmd = root_cmd;
         while (cmd != NULL)
         {
+            switch (cmd->type)
+            {
+            case BF_CMD_NONE:
+                break;
+            case BF_CMD_INC_DATA_PTR:
+                env->data_ptr_idx += cmd->value;
+                if (env->data_ptr_idx >= env->num_of_data_cells)
+                {
+                    bf_error(status, BF_STATUS_DATA_PTR_OUT_OF_BOUNDS, cmd->line, cmd->column);
+                    return;
+                }
+                break;
+            case BF_CMD_DEC_DATA_PTR:
+                env->data_ptr_idx -= cmd->value;
+                if (env->data_ptr_idx < 0)
+                {
+                    bf_error(status, BF_STATUS_DATA_PTR_OUT_OF_BOUNDS, cmd->line, cmd->column);
+                    return;
+                }
+                break;
+            case BF_CMD_INC_VALUE:
+                env->data_cells[env->data_ptr_idx] += cmd->value;
+                break;
+            case BF_CMD_DEC_VALUE:
+                env->data_cells[env->data_ptr_idx] -= cmd->value;
+                break;
+            case BF_CMD_OUTPUT:
+                printf("%c", env->data_cells[env->data_ptr_idx]);
+                break;
+            case BF_CMD_INPUT:
+                // TODO
+                break;
+            case BF_CMD_JUMP_FORWARD:
+                if (env->data_cells[env->data_ptr_idx] == 0)
+                {
+                    cmd = cmd->jump_cmd_target;
+                    continue;
+                }
+                break;
+            case BF_CMD_JUMP_BACK:
+                if (env->data_cells[env->data_ptr_idx] != 0)
+                {
+                    cmd = cmd->jump_cmd_target;
+                    continue;
+                }
+            }
+
             cmd = cmd->next_cmd;
         }
+
+        bf_cmd_destroy(root_cmd);
     }
 }
 
@@ -191,7 +266,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
             if (!is_optimized_cmd)
             {
                 cmd = bf_malloc(SIZE_OF_CMD_TYPE);
-                bf_cmd_init(cmd, current_type, 0);
+                bf_cmd_init(cmd, current_type, 0, line, pos - line_offset);
                 if (current_type == BF_CMD_JUMP_FORWARD)
                 {
                     bf_cmd_stack_push(&jump_stack, cmd);
@@ -217,7 +292,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
                 if (current_type != prev_type)
                 {
                     cmd = bf_malloc(SIZE_OF_CMD_TYPE);
-                    bf_cmd_init(cmd, current_type, 1);
+                    bf_cmd_init(cmd, current_type, 1, line, pos - line_offset);
                 }
                 else
                 {
@@ -227,12 +302,13 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
 
             if (cmd != NULL)
             {
-                if (prev_type == BF_CMD_JUMP_BACK && prev_cmd->jump_cmd_target != NULL)
+                if (prev_type == BF_CMD_JUMP_BACK && prev_cmd->jump_cmd_target)
                 {
                     prev_cmd->jump_cmd_target->jump_cmd_target = cmd;
+                    prev_cmd->jump_cmd_target = prev_cmd->jump_cmd_target->next_cmd;
                 }
 
-                if (prev_cmd != NULL)
+                if (prev_cmd)
                 {
                     prev_cmd->next_cmd = cmd;
                 }

@@ -54,6 +54,8 @@ typedef struct {
 typedef struct bf_cmd {
     bf_cmd_type_t type;
     size_t value;                   // Used for increment and decrement optimization
+    size_t line;
+    size_t column;
     struct bf_cmd *next_cmd;
     struct bf_cmd *jump_cmd_target;      // Only used for the jump commands
 } bf_cmd_t;
@@ -67,6 +69,14 @@ typedef struct {
     bf_cmd_stack_item_t *last;
     size_t length;
 } bf_cmd_stack_t;
+
+typedef struct {
+    unsigned char *data_cells;
+    size_t num_of_data_cells;
+    size_t data_ptr_idx;
+    char *input;
+    size_t input_idx;       // To keep track of the index position for input commands
+} bf_env_t;
 
 // Allocates memory or aborts on failure
 void* bf_malloc(size_t size);
@@ -84,16 +94,25 @@ void bf_cmd_stack_push(bf_cmd_stack_t *stack, bf_cmd_t *cmd);
 bf_cmd_t* bf_cmd_stack_pop(bf_cmd_stack_t *stack);
 
 // Initializes a Brainfuck command struct
-void bf_cmd_init(bf_cmd_t *cmd, bf_cmd_type_t type, size_t value);
+void bf_cmd_init(bf_cmd_t *cmd, bf_cmd_type_t type, size_t value, size_t line, size_t column);
 
 // Frees the entire list of commands
 // NOTE: Should only ever be used on the root command node
 void bf_cmd_destroy(bf_cmd_t *root_cmd);
 
+// Initializes an environment
+void bf_env_init(bf_env_t *env, size_t num_of_data_cells, char *input);
+
+// Frees the memory of a data array
+void bf_env_destroy(bf_env_t *env);
+
+// Sets an error for a status
 void bf_error(bf_status_t *status, bf_status_type_t type, size_t line, size_t column);
 
+// Parses a brainfuck string
 bf_cmd_t* bf_parse_str(bf_status_t *status, char *source);
 
-void bf_run(bf_status_t *status, char *source);
+// Interprets a brainfuck string
+void bf_run(bf_status_t *status, char *source, bf_env_t *env);
 
 #endif // __BF_H__
