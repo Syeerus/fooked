@@ -68,6 +68,9 @@ typedef struct {
     size_t length;
 } bf_cmd_stack_t;
 
+// Allocates memory or aborts on failure
+void* bf_malloc(size_t size);
+
 // Initializes a Brainfuck command stack
 void bf_cmd_stack_init(bf_cmd_stack_t *stack);
 

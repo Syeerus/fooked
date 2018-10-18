@@ -20,9 +20,22 @@
  * SOFTWARE.
  */
 
+#include <stdio.h>
 #include <stdbool.h>
 
 #include "bf.h"
+
+void* bf_malloc(size_t size)
+{
+    void *ptr = malloc(size);
+    if (ptr == NULL && size != 0)
+    {
+        fprintf(stderr, "Memory allocation error.");
+        abort();
+    }
+
+    return ptr;
+}
 
 void bf_cmd_init(bf_cmd_t *cmd, bf_cmd_type_t type, size_t value)
 {
@@ -64,7 +77,7 @@ void bf_cmd_stack_push(bf_cmd_stack_t *stack, bf_cmd_t *cmd)
 {
     static const size_t SIZE_OF_CMD_STACK_ITEM_TYPE = sizeof(bf_cmd_stack_item_t);
 
-    bf_cmd_stack_item_t *item = malloc(SIZE_OF_CMD_STACK_ITEM_TYPE);
+    bf_cmd_stack_item_t *item = bf_malloc(SIZE_OF_CMD_STACK_ITEM_TYPE);
     item->previous = stack->last;
     item->value = cmd;
     stack->last = item;
@@ -163,7 +176,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
                 current_type = BF_CMD_NONE;
             }
 
-            line_offset = pos;
+            line_offset = pos + 1;
             ++line;
         default:
             if (current_type != BF_CMD_NONE)
@@ -177,7 +190,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
             bf_cmd_t *cmd = NULL;
             if (!is_optimized_cmd)
             {
-                cmd = malloc(SIZE_OF_CMD_TYPE);
+                cmd = bf_malloc(SIZE_OF_CMD_TYPE);
                 bf_cmd_init(cmd, current_type, 0);
                 if (current_type == BF_CMD_JUMP_FORWARD)
                 {
@@ -203,7 +216,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
             {
                 if (current_type != prev_type)
                 {
-                    cmd = malloc(SIZE_OF_CMD_TYPE);
+                    cmd = bf_malloc(SIZE_OF_CMD_TYPE);
                     bf_cmd_init(cmd, current_type, 1);
                 }
                 else
@@ -216,8 +229,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
             {
                 if (prev_type == BF_CMD_JUMP_BACK && prev_cmd->jump_cmd_target != NULL)
                 {
-                    bf_cmd_t *jump_target = prev_cmd->jump_cmd_target;
-                    jump_target->jump_cmd_target = cmd;
+                    prev_cmd->jump_cmd_target->jump_cmd_target = cmd;
                 }
 
                 if (prev_cmd != NULL)
