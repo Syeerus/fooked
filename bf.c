@@ -155,12 +155,13 @@ void bf_run(bf_status_t *status, char *source, bf_env_t *env)
                 }
                 break;
             case BF_CMD_DEC_DATA_PTR:
-                env->data_ptr_idx -= cmd->value;
-                if (env->data_ptr_idx < 0)
+                if (cmd->value > env->data_ptr_idx)
                 {
                     bf_error(status, BF_STATUS_DATA_PTR_OUT_OF_BOUNDS, cmd->line, cmd->column);
                     return;
                 }
+
+                env->data_ptr_idx -= cmd->value;
                 break;
             case BF_CMD_INC_VALUE:
                 env->data_cells[env->data_ptr_idx] += cmd->value;
