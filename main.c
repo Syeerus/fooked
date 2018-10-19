@@ -16,6 +16,7 @@
 
 #define VERSION "0.0.1"
 #define DEFAULT_MEM_SIZE 30000
+#define MAX_INTERACTIVE_BUFFER_SIZE 2047
 
 typedef enum {
     CMD_LINE_ARG_NONE = 0x00,
@@ -174,6 +175,23 @@ bool handle_cmd_line_args(int argc, char **argv, cmd_line_settings_t *settings)
     return false;
 }
 
+// Input prompt for interactive mode
+void get_interactive_input(bf_env_t *env, char *buffer, int max_length)
+{
+    printf("\np%lu v%d> ", (unsigned long)env->data_ptr_idx, env->data_cells[env->data_ptr_idx]);
+    fgets(buffer, max_length, stdin);
+
+    // Remove newline from buffer
+    int pos = 0;
+    int last_pos = max_length - 1;
+    while (buffer[pos] != '\n' && pos < last_pos)
+    {
+        ++pos;
+    }
+
+    buffer[pos] = '\0';
+}
+
 int main(int argc, char **argv)
 {
     cmd_line_settings_t settings;
@@ -261,7 +279,20 @@ int main(int argc, char **argv)
         }
     }
 
-    // TODO: Interactive mode
+    if (settings.flags & CMD_LINE_ARG_INTERACTIVE_MODE)
+    {
+        printf("\n\nInteractive Mode (type \"exit\" to quit)");
+        char *buffer = bf_malloc(sizeof(char) * MAX_INTERACTIVE_BUFFER_SIZE);
+        get_interactive_input(&env, buffer, MAX_INTERACTIVE_BUFFER_SIZE);
+        while (!str_match(buffer, "exit"))
+        {
+            run_code(&env, buffer);
+            get_interactive_input(&env, buffer, MAX_INTERACTIVE_BUFFER_SIZE);
+        }
+
+        free(buffer);
+    }
+
     bf_env_destroy(&env);
     return 0;
 }
