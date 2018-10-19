@@ -97,10 +97,9 @@ void run_code(bf_env_t *env, char *source)
     }
 }
 
-int main(int argc, char **argv)
+// Handles command line arguments, returns whether to exit or not
+bool handle_cmd_line_args(int argc, char **argv, cmd_line_settings_t *settings)
 {
-    cmd_line_settings_t settings;
-    cmd_line_settings_init(&settings);
     cmd_line_flag_t last_flag = CMD_LINE_ARG_NONE;
     unsigned long long mem_size;
     size_t i;
@@ -115,8 +114,8 @@ int main(int argc, char **argv)
             case CMD_LINE_ARG_INTERACTIVE_MODE:
                 break;
             case CMD_LINE_ARG_INPUT:
-                settings.flags |= CMD_LINE_ARG_INPUT;
-                settings.input = arg;
+                settings->flags |= CMD_LINE_ARG_INPUT;
+                settings->input = arg;
                 break;
             case CMD_LINE_ARG_MEM_SIZE:
                 mem_size = strtoull(arg, NULL, 10);
@@ -132,7 +131,7 @@ int main(int argc, char **argv)
                 }
                 else if (mem_size > 0)
                 {
-                    settings.mem_size = mem_size;
+                    settings->mem_size = mem_size;
                 }
                 else
                 {
@@ -146,7 +145,7 @@ int main(int argc, char **argv)
         else if (str_match(arg, "-v") || str_match(arg, "--version"))
         {
             printf("%s version %s\n", argv[0], VERSION);
-            return 0;
+            return true;
         }
         else if (str_match(arg, "-i") || str_match(arg, "--input"))
         {
@@ -154,7 +153,7 @@ int main(int argc, char **argv)
         }
         else if (str_match(arg, "-I") || str_match(arg, "--interactive"))
         {
-            settings.flags |= CMD_LINE_ARG_INTERACTIVE_MODE;
+            settings->flags |= CMD_LINE_ARG_INTERACTIVE_MODE;
         }
         else if (str_match(arg, "-s") || str_match(arg, "--mem-size"))
         {
@@ -164,12 +163,24 @@ int main(int argc, char **argv)
         {
             printf("\nFooked Brainfuck Interpreter\n");
             print_help(argv[0]);
-            return 0;
+            return true;
         }
-        else if (settings.filename == NULL)
+        else if (settings->filename == NULL)
         {
-            settings.filename = arg;
+            settings->filename = arg;
         }
+    }
+
+    return false;
+}
+
+int main(int argc, char **argv)
+{
+    cmd_line_settings_t settings;
+    cmd_line_settings_init(&settings);
+    if (handle_cmd_line_args(argc, argv, &settings))
+    {
+        return 0;
     }
 
     if (settings.filename == NULL && !(settings.flags & CMD_LINE_ARG_INTERACTIVE_MODE))
