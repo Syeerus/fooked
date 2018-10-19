@@ -175,7 +175,7 @@ void bf_run(bf_status_t *status, char *source, bf_env_t *env)
                 if (env->input)
                 {
                     env->data_cells[env->data_ptr_idx] = env->input[env->input_idx];
-                    if (env->input[env->input_idx] != '\0')
+                    if (env->input[env->input_idx] != '\0' && env->input[env->input_idx + 1] != '\0')
                     {
                         ++(env->input_idx);
                     }
@@ -274,7 +274,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
             if (!is_optimized_cmd)
             {
                 cmd = bf_malloc(SIZE_OF_CMD_TYPE);
-                bf_cmd_init(cmd, current_type, 0, line, pos - line_offset);
+                bf_cmd_init(cmd, current_type, 0, line, (pos - line_offset) + 1);
                 if (current_type == BF_CMD_JUMP_FORWARD)
                 {
                     bf_cmd_stack_push(&jump_stack, cmd);
@@ -290,7 +290,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
                         // Error
                         bf_cmd_destroy(root_cmd);
                         bf_cmd_stack_destroy(&jump_stack);
-                        bf_error(status, BF_STATUS_UNEXPECTED_CLOSING_BRACKET, line, pos - line_offset);
+                        bf_error(status, BF_STATUS_UNEXPECTED_CLOSING_BRACKET, line, (pos - line_offset) + 1);
                         return NULL;
                     }
                 }
@@ -300,7 +300,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
                 if (current_type != prev_type)
                 {
                     cmd = bf_malloc(SIZE_OF_CMD_TYPE);
-                    bf_cmd_init(cmd, current_type, 1, line, pos - line_offset);
+                    bf_cmd_init(cmd, current_type, 1, line, (pos - line_offset) + 1);
                 }
                 else
                 {
@@ -340,7 +340,7 @@ bf_cmd_t* bf_parse_str(bf_status_t *status, char *source)
         // Error
         bf_cmd_destroy(root_cmd);
         bf_cmd_stack_destroy(&jump_stack);
-        bf_error(status, BF_STATUS_UNCLOSED_BRACKET, line, pos - line_offset);
+        bf_error(status, BF_STATUS_UNCLOSED_BRACKET, line, (pos - line_offset) + 1);
         return NULL;
     }
 

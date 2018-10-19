@@ -3,6 +3,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+#if defined(linux) || defined(__unix__)
+#include <unistd.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 
 #include "bf.h"
@@ -68,6 +75,26 @@ void print_help(const char *prog_name)
     printf("  -I --interactive    Enables interactive mode.\n");
     printf("  -v --version        Prints the version and exits.\n");
     printf("  -h --help           Prints this help message.\n");
+}
+
+// Runs a string of code and prints error messages if necessary
+void run_code(bf_env_t *env, char *source)
+{
+    bf_status_t status;
+    bf_run(&status, source, env);
+    switch (status.type)
+    {
+    case BF_STATUS_OK:
+        break;
+    case BF_STATUS_DATA_PTR_OUT_OF_BOUNDS:
+        fprintf(stderr, "\nData pointer is out of bounds: line %lu, col %lu\n", (unsigned long)status.line, (unsigned long)status.column);
+        break;
+    case BF_STATUS_UNCLOSED_BRACKET:
+        fprintf(stderr, "\nUnclosed bracked: line %lu, col %lu\n", (unsigned long)status.line, (unsigned long)status.column);
+        break;
+    case BF_STATUS_UNEXPECTED_CLOSING_BRACKET:
+        fprintf(stderr, "\nUnexpected closing bracket: line %lu, col %lu\n", (unsigned long)status.line, (unsigned long)status.column);
+    }
 }
 
 int main(int argc, char **argv)
@@ -139,7 +166,7 @@ int main(int argc, char **argv)
             print_help(argv[0]);
             return 0;
         }
-        else
+        else if (settings.filename == NULL)
         {
             settings.filename = arg;
         }
@@ -155,7 +182,74 @@ int main(int argc, char **argv)
 
     bf_env_t env;
     bf_env_init(&env, settings.mem_size, settings.input);
-    // TODO: Parse and run file
+
+    if (settings.filename)
+    {
+        long file_size = 0;
+        #if defined(linux) || defined(__unix__)
+        struct stat buf;
+        if (stat(settings.filename, &buf) == 0)
+        {
+            file_size = buf.st_size;
+        }
+        else
+        {
+            fprintf(stderr, "There was an error checking the size of the file '%s'.\n", settings.filename);
+        }
+        #elif defined(WIN32) || defined(_WIN32)
+        struct _stat buf;
+        if (_stat(settings.filename, &buf) == 0)
+        {
+            file_size = buf.st_size;
+        }
+        else
+        {
+            switch (errno)
+            {
+            case ENOENT:
+                fprintf(stderr, "File '%s' not found.\n", settings.filename);
+                break;
+            case EINVAL:
+                fprintf(stderr, "Invalid parameter to _stat.\n");
+                break;
+            default:
+                fprintf(stderr, "Unexpected error for file '%s'.\n", settings.filename);
+            }
+        }
+        #endif
+
+        if (file_size > 0)
+        {
+            FILE *fp = fopen(settings.filename, "r");
+            if (fp)
+            {
+                char *file_data = bf_malloc(file_size + 1);
+                size_t pos = 0;
+                int c = fgetc(fp);
+                while (c != EOF && pos < file_size)
+                {
+                    file_data[pos] = (unsigned char)c;
+                    ++pos;
+                    c = fgetc(fp);
+                }
+
+                file_data[file_size] = '\0';
+
+                if (fclose(fp) != 0)
+                {
+                    fprintf(stderr, "Failed to close file '%s'.\n", settings.filename);
+                }
+
+                run_code(&env, file_data);
+                free(file_data);
+            }
+            else
+            {
+                fprintf(stderr, "There was an error opening the file '%s'.\n", settings.filename);
+            }
+        }
+    }
+
     // TODO: Interactive mode
     bf_env_destroy(&env);
     return 0;
