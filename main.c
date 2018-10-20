@@ -14,7 +14,7 @@
 
 #include "bf.h"
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define DEFAULT_MEM_SIZE 30000
 #define MAX_INTERACTIVE_BUFFER_SIZE 2047
 
